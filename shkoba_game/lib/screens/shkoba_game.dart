@@ -33,6 +33,7 @@ class _GameScreenState extends State<GameScreen> {
   List<CardModel> hand = [];
   List<CardModel> eatenCards = [];
   int chkobbaCount = 0;
+  String currentTurn = "";
 
   @override
   void initState() {
@@ -40,6 +41,9 @@ class _GameScreenState extends State<GameScreen> {
 
     widget.socketService.connect();
     widget.socketService.joinRoom(widget.roomName, widget.playerName);
+
+  
+
 
     // Initial state
     widget.socketService.onInitialState((data) {
@@ -56,15 +60,11 @@ class _GameScreenState extends State<GameScreen> {
           //     .map((c) => CardModel(c['suit'], c['value']))
           //     .toList();
           // chkobbaCount = data['chkobba'] ?? 0;
+          currentTurn = data['currentTurn'] ?? "";
         }
       });
     });
-void restartGame() {
-  widget.socketService.restartGame(
-    room: widget.roomName,
-    player: widget.playerName,
-  );
-}
+
     // Updates after any player move
     widget.socketService.onUpdateState((data) {
       if (!mounted) return;
@@ -79,9 +79,10 @@ void restartGame() {
             .map((c) => CardModel(c['suit'], c['value']))
             .toList();
         chkobbaCount = data['chkobba'][widget.playerName] ?? 0;
+        currentTurn = data['currentTurn'] ?? "";
       });
     });
-  
+
     widget.socketService.onGameOver((data) {
       if (!mounted) return;
       showDialog(
@@ -111,7 +112,19 @@ void restartGame() {
     });
   }
 
+  void restartGame() {
+    widget.socketService.restartGame(
+      room: widget.roomName,
+      player: widget.playerName,
+    );
+  }
+
   void playCard(CardModel card) {
+    if (currentTurn != widget.playerName) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text("Not yout turn!")));
+      return;
+    }
     widget.socketService.playCard(
       room: widget.roomName,
       player: widget.playerName,
@@ -120,6 +133,12 @@ void restartGame() {
   }
 
   void drawNewCards() {
+    widget.socketService.onDrawNotAllowed((message) {
+    if (!mounted) return; // <-- check mounted here
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  });
     widget.socketService.drawCards(
       room: widget.roomName,
       player: widget.playerName,
@@ -214,6 +233,15 @@ void restartGame() {
                     ),
                   ],
                 ),
+              ),
+              Text(
+                currentTurn == widget.playerName
+                    ? "Your turn!"
+                    : "$currentTurn is playing...",
+                style: const TextStyle(
+                    color: Colors.yellow,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold),
               ),
               const Text(
                 'Your Hand:',

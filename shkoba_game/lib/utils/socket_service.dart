@@ -83,4 +83,10 @@ class SocketService {
       'player': player,
     });
   }
+
+  void onDrawNotAllowed(Function(String) callback) {
+    _socket.on('draw_not_allowed', (data) {
+      callback(data['message'] ?? 'Draw not allowed');
+    });
+  }
 }
